@@ -107,7 +107,7 @@ Violet 的前端是有多个入口的，将 主页 / 登陆 / 管理 三个部�
 
 首先是入口文件，将原来的单个入口修改成多个入口，这里声明了`index`和`account`两个入口文件的位置
 
-```json
+```js
 entry: {
     index: [
         isEnvDevelopment &&
@@ -124,7 +124,7 @@ entry: {
 
 声明多个入口后，就需要多个出口(生成文件)，这里通过使用`HtmlWebpackPlugin`这个插件生成。
 
-```json
+```js
 plugins: [
     // Generates an `index.html` file with the <script> injected.
     new HtmlWebpackPlugin(
@@ -154,7 +154,7 @@ plugins: [
 
 还有需要修改生成的`js`文件命名规则，不然会发生冲突而在调试的时候无法显示某一入口。即在`filename`的地方加上`[name]`来区分不同的生成`js`
 
-```json
+```js
  output: {
       filename: isEnvProduction
         ? 'static/js/[name].[contenthash:8].js'
@@ -447,11 +447,120 @@ const App: React.FC = () => {
 export default App
 ```
 
-
-
-
-
 ## 使用 React Router
 
 既然要构建 Web 应用，那么 Router 是必不可少的。接下来使用 Hook 的方法使用 React Router
+
+可以看看这篇[文章](https://blog.logrocket.com/how-react-hooks-can-replace-react-router/)，写的挺好的，这里以 hook 的形式写了一个`useRoute`来创建路由，只是我个人不是很喜欢将路由文件分离出来。
+
+首先当然是安装依赖
+
+```bash
+ npm i react-router @/react-router-dom -S
+ npm i @types/react-router @types/react-router-dom -D
+```
+
+首先构建一个普通的路由
+
+```tsx
+<BrowserRouter>
+    <div>
+        <Route exact={true} path="/" component={Main} />
+        <Route path="/about" component={About} />
+    </div>
+</BrowserRouter>
+```
+
+然后路由中的信息可以通过参数注入
+
+```tsx
+import React from 'react'
+import './index.less'
+import { RouteComponentProps } from 'react-router'
+
+interface IAboutProps extends RouteComponentProps<any> {}
+
+const About: React.SFC<IAboutProps> = props => {
+  return (
+    <div className="App">
+      {props.location.pathname}
+    </div>
+  )
+}
+
+export default About
+```
+
+在组件属于 Route 的 component 的情况下，这些参数会被自动注入，如果不在那么就没有办法获取到这些参数。在之前的项目中，是通过高阶组件`withRouter`实现参数的注入的。很高兴的是，有人实现了 Hook 形式的 `withRouter`. 我们只需要在 npm 上 install 这个`use-react-router`即可
+
+```bash
+npm i use-react-router -S
+```
+
+然后就可以很高兴地用起来了
+
+```tsx
+import React from 'react'
+import './index.less'
+import useReactRouter from 'use-react-router'
+
+const About: React.FC = () => {
+  const { location } = useReactRouter();
+  return (
+    <div className="App">
+      {location.pathname}
+    </div>
+  )
+}
+
+export default About
+```
+
+可以看到 Hook 的存在极大简化了状态的复用，不用再写多余的高阶组件或者是参数接口。
+
+
+
+## 使用 Ant Design
+
+Ant Design 是一套比较完善的 UI 库，这里我们将他加入到我们的项目中。
+
+首先安装 `antd`
+
+```bash
+npm i antd -S
+```
+
+然后安装按需引入插件`babel-plugin-import`
+
+```bash
+ npm i babel-plugin-import -D
+```
+
+本来应该在项目的根目录添加一个`.babelrc`的文件来配置`babel`，但是`create-react-app`默认把`babel`配置写在了`package.json`里面，因此我们也把配置写到里面。这样，就实现了按需引入组件的样式了。
+
+```json
+"babel": {
+    "presets": [
+        "react-app"
+    ],
+    "plugins": [
+        [
+            "import",
+            {
+                "libraryName": "antd",
+                "libraryDirectory": "es",
+                "style": "css"
+            }
+        ]
+    ]
+},
+```
+
+
+
+## 使用 Mobx
+
+https://mobx-react.js.org/
+
+虽然 Hook 加上 Context 已经可以很好地管理状态，但是 Mobx 可以帮助我们更方便地管理组件以及全局的状态。
 

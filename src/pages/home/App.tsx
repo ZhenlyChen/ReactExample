@@ -2,6 +2,12 @@ import React from 'react'
 import logo from '../../assets/logo.svg'
 import './App.less'
 
+// router
+import { BrowserRouter, Route } from 'react-router-dom';
+import Main from './main';
+import About from './about';
+
+
 const App: React.FC = () => {
   return (
     <div className="App">
@@ -10,14 +16,12 @@ const App: React.FC = () => {
         <p>
           Edit <code>src/App.tsx</code> and save to reload.
         </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
+        <BrowserRouter>
+          <div>
+            <Route exact={true} path="/" component={Main} />
+            <Route path="/about" component={About} />
+          </div>
+        </BrowserRouter>
       </header>
     </div>
   )
