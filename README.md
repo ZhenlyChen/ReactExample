@@ -99,6 +99,86 @@ const sassModuleRegex = /\.module\.(scss|sass)$/;
 npm i react-router react-router-dom -s
 ```
 
+## 多入口配置
+
+Violet 的前端是有多个入口的，将 主页 / 登陆 / 管理 三个部分根据业务场景分离开来，可以减少某些常见业务场景下需要加载的资源（比如最主要和最常见的授权登陆）
+
+要实现多入口，就需要修改 Webpack 的打包配置。
+
+首先是入口文件，将原来的单个入口修改成多个入口，这里声明了`index`和`account`两个入口文件的位置
+
+```json
+entry: {
+    index: [
+        isEnvDevelopment &&
+        require.resolve('react-dev-utils/webpackHotDevClient'),
+        paths.appIndexJs,
+    ].filter(Boolean),
+    account: [
+        isEnvDevelopment &&
+        require.resolve('react-dev-utils/webpackHotDevClient'),
+        paths.appAccountJs
+    ].filter(Boolean)
+},
+```
+
+声明多个入口后，就需要多个出口(生成文件)，这里通过使用`HtmlWebpackPlugin`这个插件生成。
+
+```json
+plugins: [
+    // Generates an `index.html` file with the <script> injected.
+    new HtmlWebpackPlugin(
+        Object.assign(
+            {
+                inject: true,
+                chunks: ['index'],
+                template: paths.appHtml
+            },
+            // ...
+        )
+    ),
+    new HtmlWebpackPlugin(
+        Object.assign(
+            {
+                inject: true,
+                chunks: ['account'],
+                template: paths.appHtml,
+                filename: 'account.html'
+            },
+            // ...
+        )
+    ),
+	// ...
+]
+```
+
+还有需要修改生成的`js`文件命名规则，不然会发生冲突而在调试的时候无法显示某一入口。即在`filename`的地方加上`[name]`来区分不同的生成`js`
+
+```json
+ output: {
+      filename: isEnvProduction
+        ? 'static/js/[name].[contenthash:8].js'
+        : isEnvDevelopment && 'static/js/[name].bundle.js',
+ 	  //...
+ }
+```
+
+在调试的时候，还需要对路径进行改写，通过修改 `webpackDevServer.config.js` 这个文件实现。
+
+```js
+historyApiFallback: {
+    // Paths with dots should still use the history fallback.
+    // See https://github.com/facebookincubator/create-react-app/issues/387.
+    disableDotRule: true,
+        // 多入口重定向
+        rewrites: [
+            { from: /^\/account/, to: '/account.html' },
+        ]
+},
+```
+
+这样，就实现了主页`/`的入口以及登陆页`/account`的入口了。
+
 ## Hooks 入门
 
 现在，我们先来看看 Hooks 是何方神圣，为什么 React 推出这种新的模式，为什么 Vue 3 也抛弃 Class 的提案，而转来模仿 Hooks
@@ -366,3 +446,12 @@ const App: React.FC = () => {
 
 export default App
 ```
+
+
+
+
+
+## 使用 React Router
+
+既然要构建 Web 应用，那么 Router 是必不可少的。接下来使用 Hook 的方法使用 React Router
+

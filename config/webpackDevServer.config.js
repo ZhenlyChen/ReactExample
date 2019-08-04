@@ -79,6 +79,10 @@ module.exports = function(proxy, allowedHost) {
       // Paths with dots should still use the history fallback.
       // See https://github.com/facebook/create-react-app/issues/387.
       disableDotRule: true,
+      // 多入口重定向
+      rewrites: [
+        { from: /^\/account/, to: '/account.html' },
+      ]
     },
     public: allowedHost,
     proxy,
