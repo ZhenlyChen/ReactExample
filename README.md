@@ -1,6 +1,6 @@
 # 使用 React Hooks 与 TypeScript 构建项目
 
-今天本来想给 Violet 加上移动端的界面，使用 `material-ui` 作为组件库。但是如果在原来的基础上添加又异常蛋疼，因为这个组件库的示例是基于最新的 React Hooks 使用的，而我的项目中全都是 Class 的用法。Hooks 的思想可以极大提高组件的可复用性，据说 Vue 3.0 也是推荐这种用法，早就想使用 Hooks 重构一遍但无奈又没有时间，今天正好搞一下。
+今天本来想给 Violet 加上移动端的界面，使用 `material-ui` 作为组件库。但是如果在原来的基础上添加又异常蛋疼，因为这个组件库的示例是基于最新的 React Hooks 使用的，而我的项目中全都是 Class 的用法。Hooks 的思想可以极大提高组件的可复用性，据说 Vue 3.0 也是推荐这种用法，早就想使用 Hooks 重构一遍但无奈又没有时间，今天正好搞一下，这样一来，就可以使用 Hook 将移动端和PC端的逻辑进行复用。
 
 在现在这个时间点，对于单页面 Web 应用的框架我是更喜欢使用 React 的，就是因为他对于 TypeScript 的支持比较完善。老实说，用了 TypeScript 之后就再也不想碰 JavaScript 了，他的类型推断和代码跟踪结合 VSCode 使得我几乎可以完全脱离文档使用，带有类型的代码就是最好的文档。
 
@@ -562,5 +562,200 @@ npm i antd -S
 
 https://mobx-react.js.org/
 
-虽然 Hook 加上 Context 已经可以很好地管理状态，但是 Mobx 可以帮助我们更方便地管理组件以及全局的状态。
+虽然 Hook 加上 Context 已经可以很好地管理状态，但是 Mobx 可以帮助我们更方便地管理组件以及全局的状态。类似的状态管理工具还有著名的 Redux，但是已经不适合轻量化的 Hook 模式，因此这里使用 Mobx 来进行状态管理。
 
+首先进行安装，因为我们用上了 Hook， 因此一个简化版的 mobx 就可以满足我们状态管理的需求
+
+```bash
+npm i mobx mobx-react-lite -S
+```
+
+先来看看使用原生API的效果
+
+```tsx
+import React, { useState } from 'react'
+import './index.less'
+import { Button } from 'antd';
+
+const Main: React.FC = () => {
+  let [count, setCount] = useState(0)
+
+  const onClickAdd = () => {
+    setCount(count + 1)
+  }
+
+  return (
+    <div className="App">
+      <p>{count}</p>
+      <Button onClick={onClickAdd}>Add</Button>
+    </div>
+  )
+}
+
+export default Main
+```
+
+使用`mobx-react-lite`后，可以直接通过修改变量使得视图发生变化
+
+```tsx
+import React from 'react'
+import './index.less'
+import { Button } from 'antd'
+import { useLocalStore, useObserver } from "mobx-react-lite"
+
+const Main: React.FC = () => {
+  const localState = useLocalStore(() => ({
+    count: 0,
+  }))
+
+  const onClickAdd = () => {
+    localState.count++
+  }
+
+  return useObserver(() =>
+    <div className="App">
+      <p>{localState.count}</p>
+      <Button onClick={onClickAdd}>Add</Button>
+    </div>
+  )
+}
+
+export default Main
+```
+
+除此之外，还可以利用`useContext`设置全局的状态。
+
+首先，我们创建一个全局的Store
+
+```tsx
+import React from 'react'
+
+export const storeContext = React.createContext<TStore | null>(null)
+
+export type TUser = {
+    name: string
+    phone: string
+}
+
+export function createStore() {
+    return {
+        user: {} as TUser
+    }
+}
+
+export type TStore = ReturnType<typeof createStore>
+
+export const useStore = () => {
+    const store = React.useContext(storeContext)
+    if (!store) {
+        throw new Error('You have forgot to use StoreProvider, shame on you.')
+    }
+    return store
+}
+
+```
+
+在`App.tsx`中注入
+
+```tsx
+import React from 'react'
+
+import { createStore, storeContext } from '../../Store'
+import { useLocalStore } from 'mobx-react-lite';
+
+const App: React.FC = () => {
+  const store = useLocalStore(createStore)
+
+  return (
+    <storeContext.Provider value={store}>
+      <div className="App">
+        ...
+      </div>
+    </storeContext.Provider>
+  )
+}
+
+export default App
+```
+
+在下面所有的组件中，都可以使用`useStore`访问全局状态
+
+```tsx
+import React from 'react'
+import { Button } from 'antd'
+import { useLocalStore, useObserver } from 'mobx-react-lite'
+import { useStore } from '../../../Store';
+
+const Main: React.FC = () => {
+  const store = useStore()
+
+  const onClickAdd = () => {
+    store.user.name = '123'
+  }
+
+  return useObserver(() =>
+    <div className="App">
+      <p>{store.user.name}</p>
+      <Button onClick={onClickAdd}>Add</Button>
+    </div>
+  )
+}
+
+export default Main
+```
+
+## 使用 Axios
+
+在 React 开发中，你能使用任何你喜欢的 AJAX 库，比如社区比较流行的 [Axios](https://github.com/axios/axios)
+
+安装走起
+
+```bash
+npm i axios -S
+```
+
+在之前的 Class 模式下，官方推荐是在 `componentDidMount` 中加载数据，而在 Hook 模式下，可以使用 `useEffect` 代替
+
+```tsx
+import React, { useEffect } from 'react'
+import { Button } from 'antd'
+import { useLocalStore, useObserver } from 'mobx-react-lite'
+import axios from 'axios'
+
+const Main: React.FC = () => {
+
+  const localState = useLocalStore(() => ({
+    info: 'hell0,w0rld'
+  }))
+
+  const getData = async () => {
+    try {
+      const res = await axios.get('https://api.github.com/')
+      console.log(res)
+    } catch (error) {
+      console.log(error.response.data.message)
+      localState.info = error.response.data.message
+    }
+  }
+
+  useEffect(() => {
+    getData()
+  });
+
+  return useObserver(() =>
+    <div className="App">
+      <p>{localState.info}</p>
+      <p>{localState.count}</p>
+    </div>
+  )
+}
+
+export default Main
+
+```
+
+使用 `axios` 可以使我们摆脱回调地狱，轻松发起请求。
+
+## 总结
+
+做完以上一顿基本操作之后，一个基于 React Hook 的框架就大致建立了起来。然后就可以享受使用 TypeScript 进行愉快地开发了。
