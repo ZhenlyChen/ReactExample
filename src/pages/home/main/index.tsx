@@ -33,7 +33,7 @@ const Main: React.FC = () => {
 
   useEffect(() => {
     getData()
-  });
+  }, [])
 
   return useObserver(() =>
     <div className="App">
